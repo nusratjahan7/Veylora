@@ -1,12 +1,18 @@
 name: Release
 
-# Builds signed Android (APK + AAB) and — when Apple signing secrets are present
-# — a signed iOS IPA, then publishes everything on a GitHub Release.
+# Builds Android release artifacts and — when Apple signing secrets are present
+# — a signed iOS IPA, then publishes them on a GitHub Release.
+#
+# The workflow never fails just because signing secrets are missing:
+#   * Android with all secrets  -> release-signed APK + production AAB
+#   * Android without secrets   -> debug-signed "UNSIGNED-DEBUG" APK (testing only)
+#   * iOS with Apple secrets    -> signed IPA
+#   * iOS without Apple secrets -> the iOS job is skipped and no IPA is published
 #
 # Trigger: push a version tag, e.g.
 #   git tag v1.0.0 && git push origin v1.0.0
 #
-# Secrets and setup are documented in RELEASE.md.
+# Secrets and behaviour are documented in RELEASE.md.
 
 on:
   push:
@@ -33,24 +39,39 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # GitHub does not allow the `secrets` context in a job-level `if:`, so this
-  # tiny job maps "is the Apple certificate configured?" to an output the iOS
-  # job can test.
+  # job maps which credentials are configured to outputs the other jobs test.
   # ---------------------------------------------------------------------------
   detect-signing:
-    name: Detect Apple signing
+    name: Detect signing secrets
     runs-on: ubuntu-latest
     outputs:
+      android: ${{ steps.check.outputs.android }}
       ios: ${{ steps.check.outputs.ios }}
     steps:
       - id: check
         env:
-          CERT_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          IOS_CERTIFICATE_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
         run: |
-          if [ -n "$CERT_P12" ]; then
+          # Android signing is only "available" when every piece is present.
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] \
+             && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Android signing secrets found — building a release-signed APK and a production AAB."
+          else
+            echo "android=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Android signing secrets are incomplete — building a debug-signed APK named *-UNSIGNED-DEBUG.apk. This is a TESTING build, not for the Play Store."
+          fi
+
+          if [ -n "$IOS_CERTIFICATE_P12" ]; then
             echo "ios=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apple signing secrets found — building a signed IPA."
           else
             echo "ios=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::IOS_CERTIFICATE_P12 is not set — skipping the signed IPA and releasing Android assets only."
+            echo "::notice::IOS_CERTIFICATE_P12 is not set — the iOS job will be skipped and no IPA will be published."
           fi
 
   # ---------------------------------------------------------------------------
@@ -76,9 +97,12 @@ jobs:
       - run: flutter test
 
   # ---------------------------------------------------------------------------
+  # Always produces a downloadable APK: release-signed when the keystore is
+  # configured, debug-signed (and clearly labelled) when it is not.
+  # ---------------------------------------------------------------------------
   android:
     name: Android release
-    needs: validate
+    needs: [validate, detect-signing]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,18 +119,15 @@ jobs:
           cache: true
 
       - name: Configure release signing
+        if: needs.detect-signing.outputs.android == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 is not set; a signed release cannot be produced."
-            exit 1
-          fi
-          # android/app/build.gradle.kts resolves storeFile relative to the app
-          # module, and reads android/key.properties only when it exists.
+          # android/app/build.gradle.kts reads android/key.properties when it
+          # exists and resolves storeFile relative to the app module.
           printf '%s' "$KEYSTORE_BASE64" | openssl base64 -d -A > android/app/upload-keystore.jks
           cat > android/key.properties <<EOF
           storeFile=upload-keystore.jks
@@ -114,6 +135,14 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           EOF
+
+      - name: Skip signing (no secrets configured)
+        if: needs.detect-signing.outputs.android != 'true'
+        run: |
+          # Deliberately leave android/key.properties absent: build.gradle.kts
+          # then falls back to the debug signing config, which still produces an
+          # installable release APK for testing.
+          echo "::warning::No Android signing secrets — the APK will be debug-signed."
 
       - name: Install Android SDK components
         run: |
@@ -123,17 +152,23 @@ jobs:
           sdkmanager "platforms;android-37.0" "build-tools;36.0.0" \
                      "ndk;28.2.13676358" "cmake;3.22.1" || true
 
-      - name: Build APK and AAB
+      - name: Build APK (and AAB when signing is available)
         env:
           VERSION: ${{ github.ref_name }}
+          SIGNED: ${{ needs.detect-signing.outputs.android }}
         run: |
           V="${VERSION#v}"
           flutter build apk --release \
             --build-name="$V" --build-number="${{ github.run_number }}"
-          flutter build appbundle --release \
-            --build-name="$V" --build-number="${{ github.run_number }}"
+          # An AAB is a store upload artifact: only meaningful when signed.
+          if [ "$SIGNED" = "true" ]; then
+            flutter build appbundle --release \
+              --build-name="$V" --build-number="${{ github.run_number }}"
+          fi
 
-      - name: Verify the release signature
+      - name: Verify the APK signature
+        env:
+          SIGNED: ${{ needs.detect-signing.outputs.android }}
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           APKSIGNER="$(command -v apksigner || true)"
@@ -144,26 +179,42 @@ jobs:
             echo "::warning::apksigner not found; skipped the signature check."
             exit 0
           fi
+
           CERT=$("$APKSIGNER" verify --print-certs \
             build/app/outputs/flutter-apk/app-release.apk | grep "certificate DN")
           echo "$CERT"
+
           case "$CERT" in
             *"CN=Android Debug"*)
-              echo "::error::The APK is signed with the debug key. Check the ANDROID_KEYSTORE_* secrets."
-              exit 1
+              if [ "$SIGNED" = "true" ]; then
+                echo "::error::Signing secrets were configured but the APK is debug-signed. Check the ANDROID_KEYSTORE_* secrets."
+                exit 1
+              fi
+              echo "Debug-signed fallback APK — expected without signing secrets."
+              ;;
+            *)
+              if [ "$SIGNED" != "true" ]; then
+                echo "::warning::A non-debug signature was found although no signing secrets are configured."
+              fi
               ;;
           esac
 
       - name: Stage Android assets
         env:
           VERSION: ${{ github.ref_name }}
+          SIGNED: ${{ needs.detect-signing.outputs.android }}
         run: |
-          V="${VERSION#v}"
+          # Asset names use the full tag, e.g. Veylora-v1.0.0-Android.apk.
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             "dist/${APP_NAME}-${V}-Android.apk"
-          cp build/app/outputs/bundle/release/app-release.aab \
-             "dist/${APP_NAME}-${V}-Android.aab"
+          if [ "$SIGNED" = "true" ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk \
+               "dist/${APP_NAME}-${VERSION}-Android.apk"
+            cp build/app/outputs/bundle/release/app-release.aab \
+               "dist/${APP_NAME}-${VERSION}-Android.aab"
+          else
+            cp build/app/outputs/flutter-apk/app-release.apk \
+               "dist/${APP_NAME}-${VERSION}-Android-UNSIGNED-DEBUG.apk"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -259,10 +310,9 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          V="${VERSION#v}"
           mkdir -p dist
           IPA=$(ls build/ios/ipa/*.ipa | head -n1)
-          cp "$IPA" "dist/${APP_NAME}-${V}-iOS.ipa"
+          cp "$IPA" "dist/${APP_NAME}-${VERSION}-iOS.ipa"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -286,14 +336,60 @@ jobs:
           pattern: '*-assets'
           merge-multiple: true
 
-      - name: List release assets
-        run: ls -lh dist
+      - name: Check for assets
+        id: assets
+        run: |
+          ls -lh dist || true
+          COUNT=$(find dist -type f | wc -l)
+          if [ "$COUNT" -eq 0 ]; then
+            echo "has=false" >> "$GITHUB_OUTPUT"
+            echo "::error::No release assets were produced; refusing to publish an empty release."
+            exit 1
+          fi
+          echo "has=true" >> "$GITHUB_OUTPUT"
+
+      - name: Compose release notes and title
+        id: meta
+        env:
+          SIGNED: ${{ needs.detect-signing.outputs.android }}
+          IOS: ${{ needs.detect-signing.outputs.ios }}
+        run: |
+          V="${{ github.ref_name }}"
+          {
+            echo "## Downloads"
+            echo
+            if [ "$SIGNED" = "true" ]; then
+              echo "- **${APP_NAME}-${V}-Android.apk** — production APK (release-signed)"
+              echo "- **${APP_NAME}-${V}-Android.aab** — for the Google Play Console"
+            else
+              echo "> :warning: **Testing build — not a production release.** The Android APK below is **debug-signed** and is only meant for testing. Do not upload it to Google Play. Configure the ANDROID_KEYSTORE_* / ANDROID_KEY_* secrets to publish a production build."
+              echo
+              echo "- **${APP_NAME}-${V}-Android-UNSIGNED-DEBUG.apk** — debug-signed, installable APK for testing"
+            fi
+            if [ "$IOS" = "true" ]; then
+              echo "- **${APP_NAME}-${V}-iOS.ipa** — signed IPA (App Store distribution; install through TestFlight)"
+            else
+              echo
+              echo "> :information_source: **No iOS build in this release.** Apple signing secrets are not configured, so the iOS job was skipped. See RELEASE.md to enable it."
+            fi
+          } > "${RUNNER_TEMP}/body.md"
+
+          if [ "$SIGNED" = "true" ]; then
+            echo "name=${APP_NAME} ${V}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${APP_NAME} ${V} (unsigned debug build)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create the GitHub Release
-        uses: softprops/action-gh-release@v2
+        if: steps.assets.outputs.has == 'true'
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: "${{ env.APP_NAME }} ${{ github.ref_name }}"
+          name: ${{ steps.meta.outputs.name }}
+          body_path: ${{ runner.temp }}/body.md
           generate_release_notes: true
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
           files: dist/*
           fail_on_unmatched_files: true

@@ -5,15 +5,19 @@ Veylora ships through **GitHub Releases**. Pushing a version tag such as
 
 1. installs the pinned Flutter SDK and dependencies;
 2. runs `flutter analyze` and the full test suite (the release fails if either fails);
-3. builds a **signed** Android APK and AAB;
-4. builds a **signed** iOS IPA *when Apple signing is configured*;
-5. creates a GitHub Release with generated release notes;
+3. builds Android artifacts:
+   - **all signing secrets present** → a release-signed APK **and** a production AAB;
+   - **signing secrets missing** → a debug-signed APK named `…-UNSIGNED-DEBUG.apk`
+     (installable, testing only); the workflow still succeeds;
+4. builds a **signed** iOS IPA *only when Apple signing is configured* — otherwise
+   the iOS job is skipped and the release notes say so;
+5. creates a GitHub Release with generated release notes (never an empty one);
 6. attaches the downloadable assets.
 
-> Assets are named `Veylora-<version>-Android.apk`, `Veylora-<version>-Android.aab`
-> and `Veylora-<version>-iOS.ipa`. The request contained an `Ovrilo-…` example;
-> the workflow uses the project's actual brand. Change `APP_NAME` at the top of
-> `.github/workflows/release.yml` to rename every artifact.
+> Asset names keep the tag exactly as pushed, e.g. `Veylora-v1.0.0-Android.apk`,
+> `Veylora-v1.0.0-Android.aab`, `Veylora-v1.0.0-Android-UNSIGNED-DEBUG.apk`,
+> `Veylora-v1.0.0-iOS.ipa`. Change `APP_NAME` at the top of
+> `.github/workflows/release.yml` to rename the prefix.
 
 ---
 
@@ -42,13 +46,17 @@ While iterating you can also delete and re-push the tag (`git push origin
 
 ---
 
-## 2. Required GitHub Secrets
+## 2. GitHub Secrets
 
 Add these under **Repository → Settings → Secrets and variables → Actions →
 New repository secret**. The workflow only ever writes them to the ephemeral
 runner; never commit any of them.
 
-### Android (required)
+Every secret is optional: without them the workflow still publishes an
+installable (debug-signed) Android APK for testing. Add the Android secrets to
+publish a production build.
+
+### Android (recommended)
 
 | Secret | Value |
 | --- | --- |
@@ -77,9 +85,17 @@ base64 < veylora-upload.jks | tr -d '\n'
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("veylora-upload.jks"))
 ```
 
-The workflow also verifies the built APK: if it is ever signed with the Android
-debug key (`CN=Android Debug`), the release fails instead of publishing an
-unpublishable artifact.
+The workflow verifies the built APK:
+
+- **secrets present** → the APK must **not** be debug-signed, or the job fails;
+- **secrets absent** → the APK is expected to be debug-signed and is published as
+  `…-Android-UNSIGNED-DEBUG.apk`, clearly marked as a testing build.
+
+The fallback is produced by the same `flutter build apk --release`. The Gradle
+config falls back to the debug signing key when `android/key.properties` is
+absent, so the APK is a real release build (AOT, no debugging) — just signed with
+a throwaway key. It installs normally on a device, but it cannot be uploaded to
+Google Play.
 
 ### iOS (optional)
 
@@ -107,15 +123,29 @@ If you change the bundle identifier, update it in **all** of: the workflow's
 `BUNDLE_ID`, `ios/Runner.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`), the Android
 `applicationId`/`namespace`, and the provisioning profile.
 
+### What gets published
+
+| Secrets | Android assets | iOS asset | Release state |
+| --- | --- | --- | --- |
+| Android + iOS | `Veylora-vX.Y.Z-Android.apk`, `…-Android.aab` | `Veylora-vX.Y.Z-iOS.ipa` | normal release |
+| Android only | `Veylora-vX.Y.Z-Android.apk`, `…-Android.aab` | none (job skipped, noted in the release) | normal release |
+| None / incomplete | `Veylora-vX.Y.Z-Android-UNSIGNED-DEBUG.apk` | none | **pre-release**, titled “… (unsigned debug build)” |
+
+A debug-signed APK is never named `…-Android.apk`, and a testing release is never
+titled as a production build. The release is not created at all if no assets were
+produced.
+
 ---
 
 ## 3. Download the Android APK
 
 1. Open the repository's **Releases** page.
 2. Pick the release (e.g. **Veylora v1.0.0**).
-3. Download `Veylora-v1.0.0-Android.apk`.
+3. Download the APK:
+   - production build: `Veylora-v1.0.0-Android.apk` (release-signed);
+   - testing fallback: `Veylora-v1.0.0-Android-UNSIGNED-DEBUG.apk` (debug-signed).
 4. On the phone, allow **Install unknown apps** for the browser/file manager,
-   then open the file to install.
+   then open the file to install. Both files install normally.
 
 The `.aab` is not installable on a device — it is the upload format for Google
 Play Console:
@@ -176,8 +206,11 @@ Connect → Upload**.
 | Symptom | Fix |
 | --- | --- |
 | Workflow did not run | The tag must match `v*` and be pushed (`git push origin v1.0.0`). Check **Actions**. |
-| `Android release` fails before building | A missing `ANDROID_*` secret. The workflow stops rather than falling back to debug signing. |
-| “signed with the debug key” error | `ANDROID_KEYSTORE_BASE64`, password or alias is wrong; the keystore did not decode into `android/app/upload-keystore.jks`. |
+| Release contains only an `…-UNSIGNED-DEBUG.apk` | Expected when the `ANDROID_*` secrets are missing or incomplete. The build succeeds by design; add the secrets to publish a production APK + AAB. |
+| Release is a pre-release titled “(unsigned debug build)” | Same cause: no complete Android signing secrets. The marking is intentional. |
+| “Signing secrets were configured but the APK is debug-signed” error | Signing secrets are set but wrong: check `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`; the keystore must decode into `android/app/upload-keystore.jks`. |
+| “No release assets were produced” error | The Android job produced no APK. Read its log; the release job refuses to publish an empty release. |
+| `failed to strip debug symbols from native libraries` when building the AAB | Flutter's post-build check needs Android `cmdline-tools` (it runs `apkanalyzer`). GitHub runners ship it; a local SDK may not — install it with `sdkmanager "cmdline-tools;latest"`. |
 | `Failed to find target with hash string 'android-37'` | API 37 ships as `android-37.0`; the project sets `compileSdkMinor = 0`. If you edited Gradle, restore it; the workflow also installs the SDK components. |
 | Gradle cannot install SDK components | The runner's SDK must be writable and licences accepted; the workflow runs `sdkmanager --licenses`. |
 | iOS job shows **skipped** | `IOS_CERTIFICATE_P12` is not set. That is expected when only Android is configured. |
@@ -197,3 +230,7 @@ Connect → Upload**.
   certificates, passwords or provisioning profiles to the repository.
 - The workflow pins Flutter `3.44.6`. Bump `FLUTTER_VERSION` in
   `.github/workflows/release.yml` deliberately, and run the tests locally first.
+- A release is published only when the Android job succeeds (and iOS either
+  succeeded or was skipped). The release job refuses to create an empty release.
+- An unsigned testing release is marked **pre-release** and titled
+  “(unsigned debug build)” so it is never mistaken for a production build.
