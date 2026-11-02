@@ -129,10 +129,7 @@ void main() {
         isNull,
       );
       expect(
-        FrameGeometry.focusPoint(
-          point: Offset.zero,
-          displayedImage: Rect.zero,
-        ),
+        FrameGeometry.focusPoint(point: Offset.zero, displayedImage: Rect.zero),
         isNull,
       );
     });
@@ -182,8 +179,10 @@ void main() {
 
     test('full screen is the available area itself', () {
       const available = Rect.fromLTWH(0, 24, 400, 760);
-      expect(FrameGeometry.frameRect(available: available, aspect: null),
-          available);
+      expect(
+        FrameGeometry.frameRect(available: available, aspect: null),
+        available,
+      );
     });
 
     test('survives degenerate inputs', () {
@@ -314,10 +313,7 @@ void main() {
         0.5,
       );
       // A landscape window resolves to the landscape shape, not 9:16.
-      expect(
-        CaptureRatio.fullScreen.resolve(_landscape),
-        closeTo(2, 1e-9),
-      );
+      expect(CaptureRatio.fullScreen.resolve(_landscape), closeTo(2, 1e-9));
     });
 
     test('has a spoken label for the accessible quick control', () {

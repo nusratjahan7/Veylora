@@ -51,10 +51,7 @@ class SettingsRepository {
       settings.preferredCamera.name,
     );
     await store.setBool(StorageKeys.hapticsEnabled, settings.hapticsEnabled);
-    await store.setString(
-      StorageKeys.captureRatio,
-      settings.captureRatio.name,
-    );
+    await store.setString(StorageKeys.captureRatio, settings.captureRatio.name);
     await store.setBool(StorageKeys.showSensorSpill, settings.showSensorSpill);
   }, operation: 'save settings');
 

@@ -99,18 +99,16 @@ class GalleryPreviewPage extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove from gallery?'),
-        content: Text(
-          switch (entry.kind) {
-            GalleryEntryKind.photo =>
-              'This removes the app\'s copy. Photos already saved to your '
-                  'device library are not affected.',
-            GalleryEntryKind.video =>
-              'This removes the app\'s copy. Clips already saved to your '
-                  'device library are not affected.',
-            GalleryEntryKind.reference =>
-              'This removes the reference image from this device.',
-          },
-        ),
+        content: Text(switch (entry.kind) {
+          GalleryEntryKind.photo =>
+            'This removes the app\'s copy. Photos already saved to your '
+                'device library are not affected.',
+          GalleryEntryKind.video =>
+            'This removes the app\'s copy. Clips already saved to your '
+                'device library are not affected.',
+          GalleryEntryKind.reference =>
+            'This removes the reference image from this device.',
+        }),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

@@ -61,10 +61,7 @@ Uint8List? _cropToFrame(_CropJob job) {
   final source = Size(upright.width.toDouble(), upright.height.toDouble());
   if (source.isEmpty) return null;
 
-  if (FrameGeometry.sameRatio(
-    source.width / source.height,
-    job.aspectRatio,
-  )) {
+  if (FrameGeometry.sameRatio(source.width / source.height, job.aspectRatio)) {
     return null;
   }
 

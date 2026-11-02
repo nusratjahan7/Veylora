@@ -43,7 +43,9 @@ class CaptureRatioButton extends ConsumerWidget {
         button: !filming,
         enabled: !filming,
         label: 'Aspect ratio',
-        value: filming ? '${ratio.spokenLabel}, not applied to video' : ratio.spokenLabel,
+        value: filming
+            ? '${ratio.spokenLabel}, not applied to video'
+            : ratio.spokenLabel,
         hint: filming ? 'Not available while filming' : 'Tap to change',
         child: GestureDetector(
           key: const ValueKey<String>('camera-ratio'),

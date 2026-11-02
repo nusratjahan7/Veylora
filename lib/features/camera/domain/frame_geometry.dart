@@ -57,10 +57,7 @@ abstract final class FrameGeometry {
   /// A null [aspect] is "full screen": the frame follows the available area
   /// itself, so it tracks the device's real preview area rather than a
   /// hard-coded shape.
-  static Rect frameRect({
-    required Rect available,
-    required double? aspect,
-  }) {
+  static Rect frameRect({required Rect available, required double? aspect}) {
     if (available.isEmpty || aspect == null) return available;
     if (!aspect.isFinite || aspect <= 0) return available;
 
@@ -131,10 +128,7 @@ abstract final class FrameGeometry {
     if (displayedImage.isEmpty || !displayedImage.contains(point)) return null;
     return Offset(
       ((point.dx - displayedImage.left) / displayedImage.width).clamp(0.0, 1.0),
-      ((point.dy - displayedImage.top) / displayedImage.height).clamp(
-        0.0,
-        1.0,
-      ),
+      ((point.dy - displayedImage.top) / displayedImage.height).clamp(0.0, 1.0),
     );
   }
 }

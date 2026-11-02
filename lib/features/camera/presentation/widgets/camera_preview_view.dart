@@ -234,8 +234,7 @@ class _CameraViewportState extends ConsumerState<_CameraViewport> {
                     fit: StackFit.expand,
                     children: <Widget>[
                       ReferenceOverlayLayer(
-                        onTap: (position) =>
-                            focusAt(position + frame.topLeft),
+                        onTap: (position) => focusAt(position + frame.topLeft),
                       ),
                       const AlignmentGridLayer(),
                       if (_focusPoint case final point?)
@@ -515,7 +514,11 @@ class _CameraViewportState extends ConsumerState<_CameraViewport> {
       ref
           .read(appErrorHandlerProvider)
           .logger
-          .warning('The capture was not added to the gallery.', error, stackTrace);
+          .warning(
+            'The capture was not added to the gallery.',
+            error,
+            stackTrace,
+          );
       return false;
     }
   }

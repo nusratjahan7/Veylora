@@ -5,3 +5,4 @@
 - Wants native/platform compatibility (compileSdk, NDK, iOS macros/Podfile vs SPM) checked against the actual toolchain before committing to configuration. Confidence: 0.8
 - Wants the UI kept responsive during frequent updates (e.g. slider drags) by scoping rebuilds narrowly, rather than rebuilding expensive widgets like the camera preview. Confidence: 0.7
 - Prefers genuine native platform capture/output capabilities over approximations or workarounds — e.g. never derives a photo by screenshotting the live preview. Confidence: 0.7
+- Objects to silencing analyzer/lint warnings (e.g. `// ignore` directives) — wants the underlying issue fixed instead. Confidence: 0.7

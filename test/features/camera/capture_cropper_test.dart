@@ -46,10 +46,7 @@ void main() {
   test('honours a frame that covers only part of the still', () async {
     final result = await cropToFrame(
       _jpeg(200, 100),
-      const CaptureCrop(
-        frame: Rect.fromLTWH(0, 0, 0.5, 0.5),
-        aspectRatio: 1,
-      ),
+      const CaptureCrop(frame: Rect.fromLTWH(0, 0, 0.5, 0.5), aspectRatio: 1),
     );
 
     expect(result, isNotNull);
@@ -63,10 +60,7 @@ void main() {
     // shutter costs no re-encode at all.
     final result = await cropToFrame(
       _jpeg(1920, 1080),
-      const CaptureCrop(
-        frame: Rect.fromLTWH(0, 0, 1, 1),
-        aspectRatio: 16 / 9,
-      ),
+      const CaptureCrop(frame: Rect.fromLTWH(0, 0, 1, 1), aspectRatio: 16 / 9),
     );
 
     expect(result, isNull);

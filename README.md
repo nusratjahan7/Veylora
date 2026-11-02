@@ -16,6 +16,26 @@ and is never saved into your media. Built for Android and iOS.
 > the photo library; the preview, the controls and the reference overlay are never part
 > of it. Clips are muxed by the platform recorder and saved as they were filmed.
 
+## Features
+
+- Live camera preview with a reference image floated over it as a translucent guide.
+- Opacity 0–100 % with the exact percentage, presets and a reset; drag, pinch and
+  two-finger rotate anywhere on the preview, with quarter-turn snapping.
+- Fit / Fill / Center sizing, reset, lock, hide and remove — all without changing
+  the captured output.
+- 4:3 / 16:9 / 1:1 / Full capture framing; the spill outside the frame is dimmed
+  (or hidden) and is never part of the shot.
+- Photo capture that saves the camera's own bytes, cropping only when the ratio
+  needs it, and platform-muxed video at the camera's native ratio.
+- Saves to the system photo library (`Pictures/Veylora` on Android, `Photos` on
+  iOS) and keeps an in-app history of photos, clips and reference images.
+- Share, delete, replay and "use as reference" from that history.
+- Dark / light / system theme, preferred lens, grid, sensor spill, default opacity
+  and haptics — all persisted on the device.
+- Permissions requested only when needed, with a rationale sheet first and a clear
+  **Open settings** path for permanently denied states.
+- Nothing leaves the device: no account, no network, no analytics.
+
 ---
 
 ## Requirements
@@ -24,7 +44,7 @@ and is never saved into your media. Built for Android and iOS.
 | --- | --- |
 | Flutter | 3.44.6 (stable) |
 | Dart | 3.12.2 |
-| Android SDK | platform **android-37.0**, NDK 28.2.13676358, CMake 3.22.1, build-tools 37.0.0, `minSdk 24` |
+| Android SDK | platform **android-37.0** (`compileSdk 37`, `compileSdkMinor 0`), NDK 28.2.13676358, CMake 3.22.1, build-tools 36.0.0, `minSdk 24`, `targetSdk 36` |
 | Xcode (iOS) | 15+ on macOS, deployment target 13.0 (required by `camera_avfoundation`) |
 
 Dependencies (latest mutually compatible stable releases, resolved by `flutter pub`):
@@ -43,6 +63,7 @@ Dependencies (latest mutually compatible stable releases, resolved by `flutter p
 | `shared_preferences` | 2.5.6 | local settings storage |
 | `path_provider` | 2.1.6 | app directory / file handling |
 | `path` | 1.9.1 | cross-platform path joins |
+| `cupertino_icons` | 2.0.0 | the Cupertino glyph font Flutter's adaptive widgets fall back to on iOS |
 
 ---
 
@@ -89,8 +110,8 @@ or repository they expose.
 ## Installation
 
 ```bash
-git clone <your-repo-url> camora
-cd camora
+git clone <your-repo-url> Veylora
+cd Veylora
 flutter pub get
 ```
 
@@ -104,12 +125,19 @@ flutter doctor -v
 
 ## Running on Android
 
-1. **Install the required SDK components.** `permission_handler` 13 compiles against
-   `compileSdk 37`, and Flutter pins NDK `28.2.13676358`, so the app is configured with
-   `compileSdk = 37`. Install both:
+1. **Install the required SDK components.** `permission_handler_android` 14 compiles
+   against `compileSdk 37`, and Flutter pins NDK `28.2.13676358`, so the app is
+   configured with `compileSdk 37`. Google publishes API 37 as the
+   **minor-versioned** platform `android-37.0`, which is why
+   `android/app/build.gradle.kts` also sets `compileSdkMinor = 0` — without it AGP 9
+   looks for a platform named `android-37` and fails with
+   `Failed to find target with hash string 'android-37'`. Install the components
+   (AGP downloads anything still missing on the first build, as long as the SDK
+   directory is writable and the licences are accepted):
 
    ```bash
-   sdkmanager "platforms;android-37.0" "ndk;28.2.13676358" "cmake;3.22.1"
+   sdkmanager "platforms;android-37.0" "build-tools;36.0.0" \
+              "ndk;28.2.13676358" "cmake;3.22.1"
    flutter doctor --android-licenses   # accept any pending licenses
    ```
 
@@ -138,23 +166,70 @@ flutter doctor -v
 
 ---
 
-## Building on iOS
+## Building and shipping on iOS
 
-Building requires macOS with Xcode installed. Flutter 3.44 uses **Swift Package
-Manager** by default, so no `Podfile` is generated or required.
+iOS builds require macOS with a current Xcode and its command-line tools. Flutter
+3.44 uses **Swift Package Manager** by default, so there is no `Podfile` and no
+`pod install` step.
 
-```bash
-cd ios
-# Only needed if a plugin without SPM support is ever added:
-# pod install
-cd ..
+> **Verified status:** the iOS app was **not built or run during this audit** —
+> that needs macOS and an Apple signing identity. Everything below is the path to
+> produce and sign it; the shared Dart code, analyzer and test suite are verified
+> on the development machine.
 
-flutter run -d <ios-device-id>
-flutter build ios --release              # archive-ready build
-```
+### Build and sign with Xcode
 
-To ship: open `ios/Runner.xcworkspace` in Xcode, set your signing team, then
-**Product → Archive**.
+1. Install Xcode, open it once, and accept the licence
+   (`sudo xcodebuild -license accept`).
+2. `flutter doctor -v` must report the iOS toolchain; `flutter precache --ios`
+   downloads the engine artifacts.
+3. Set a unique bundle identifier. It is `com.camora.cameraOverlay` today (see
+   `PRODUCT_BUNDLE_IDENTIFIER` in `ios/Runner.xcodeproj`); change it — and the
+   Android `applicationId`/`namespace` — before shipping.
+4. Open the **workspace**, not the project, so Swift packages resolve:
+
+   ```bash
+   open ios/Runner.xcworkspace
+   ```
+
+5. Select the **Runner** target → **Signing & Capabilities**:
+   - tick **Automatically manage signing**;
+   - choose your **Team**;
+   - confirm the bundle identifier is unique to your account.
+6. Compile once without code signing to catch errors:
+
+   ```bash
+   flutter build ios --release --no-codesign
+   ```
+7. Archive with **Product → Archive**, then **Distribute App** → App Store
+   Connect / Ad Hoc / Development. `flutter build ipa --release` performs the
+   archive and export in one step once signing is configured.
+8. Upload to App Store Connect with **Transporter** or Xcode's organiser.
+
+### iOS permission macros (Swift Package Manager)
+
+`permission_handler_apple` compiles each iOS permission in or out behind a
+`PERMISSION_*` macro. Under SPM it derives those macros from the matching
+`NS*UsageDescription` keys in `ios/Runner/Info.plist`, so this app's four keys
+(camera, microphone, photo-library read, photo-library add) enable the four
+handlers. Two things to remember:
+
+- **Changes are cached.** After editing `Info.plist`, clear DerivedData once so
+  the package manifest is re-evaluated:
+  `rm -rf ~/Library/Developer/Xcode/DerivedData`.
+- **Archives started inside Xcode.app cannot locate the host app**, because
+  manifest evaluation runs with `/` as its working directory. If a release build
+  suddenly reports every permission as denied, archive with
+  `flutter build ipa --release` (which runs from the project directory) or point
+  the manifest at the plist explicitly before building:
+
+  ```bash
+  launchctl setenv PERMISSION_HANDLER_INFO_PLIST "$PWD/ios/Runner/Info.plist"
+  rm -rf ~/Library/Developer/Xcode/DerivedData
+  ```
+
+  Set `PERMISSION_HANDLER_VERBOSE=1` to have the manifest print the plists and
+  macros it resolved.
 
 ### Testing the camera on an iPhone
 
@@ -269,6 +344,18 @@ permission screens. Gallery tests cover the history store and deleted files:
 metadata round-trips through a fake key-value store, unreadable or corrupt stored
 data degrades to an empty history, and an entry whose file has gone is flagged
 rather than failing.
+
+Overlay tests cover the geometry (fit / fill / center sizing, drag / pinch /
+rotate with their clamps, quarter-turn snapping), the settings controller and the
+tray, plus an integration test that drives the overlay over the camera screen.
+Widget tests cover the camera page (permissions, lifecycle release / reopen,
+framing, capture and saving), the gallery, the home screen, the theme and the
+shared widgets.
+
+There is **no `integration_test/` device suite**: the camera, the gallery saver and
+the photo library are covered by unit and widget tests against platform fakes, and
+the real hardware is verified manually on a device (see **Testing the camera on an
+iPhone**).
 
 ---
 
@@ -453,6 +540,73 @@ shared preferences — so the history stays light and the media stays on disk.
 Files can be removed outside the app, so every entry is checked on load: a missing
 file is marked **Missing** and the preview explains it instead of failing.
 Nothing leaves the device: there is no account, no synchronisation and no backend.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `Failed to find target with hash string 'android-37'` | API 37 ships as `platforms;android-37.0`. Keep `compileSdkMinor = 0` in `android/app/build.gradle.kts` and install that package. |
+| `NDK ... did not have a source.properties file` | A partial NDK download. Delete `…/sdk/ndk/28.2.13676358` (or run `sdkmanager "ndk;28.2.13676358"`) and let AGP install it again. |
+| `Could not close incremental caches` (Windows) | The project and the pub cache are on different drives. Add `kotlin.incremental=false` to your user-level `~/.gradle/gradle.properties`. |
+| `The SDK directory is not writable` | Run `sdkmanager` from an elevated prompt, or point `sdk.dir` in `android/local.properties` at a writable SDK. |
+| Build warns the `CupertinoIcons` font is missing | Keep `cupertino_icons` in `pubspec.yaml`; it is the font Flutter's adaptive widgets use on iOS. |
+| Camera screen says access is blocked | The user denied permanently. **Open settings** deep-links to system settings; iOS never re-prompts after a denial. |
+| Captures never reach the system gallery | The photo-library add permission was refused, or storage is full. Saving asks with a rationale first and reports storage errors. |
+| A history tile says **Missing** | The file was removed outside the app. The row is kept and the preview explains it; delete it to clear the row. |
+| The Android release build is debug-signed | No `android/key.properties` — see **Release steps**. |
+| iOS: every permission reports denied | The SPM manifest could not locate the app. Build with `flutter build ipa`, or set `PERMISSION_HANDLER_INFO_PLIST`, then clear DerivedData. |
+| A capture is saved uncropped although a ratio is selected | The still already matched the ratio (nothing to do) or the crop failed — a capture is never lost to a failed crop. The log says `The capture could not be cropped`. |
+
+## Release steps
+
+### Android
+
+1. Create an upload keystore once and keep it — and its passwords — safe: losing
+   it means the app can no longer be updated on Google Play.
+
+   ```bash
+   keytool -genkey -v -keystore ~/veylora-upload.jks -keyalg RSA \
+           -keysize 2048 -validity 10000 -alias upload
+   ```
+
+2. Create `android/key.properties` (already git-ignored):
+
+   ```properties
+   storePassword=<your password>
+   keyPassword=<your password>
+   keyAlias=upload
+   storeFile=C:/path/to/veylora-upload.jks
+   ```
+
+   `android/app/build.gradle.kts` reads this file when it exists and signs the
+   release with it. Without the file, the release build stays debug-signed so
+   `flutter run --release` keeps working on a fresh checkout.
+
+3. Bump the version in `pubspec.yaml` (`version: X.Y.Z+N`) and build:
+
+   ```bash
+   flutter build apk --release          # APK
+   flutter build appbundle --release    # AAB for Google Play
+   ```
+
+4. Confirm the certificate is your upload key, not `CN=Android Debug`:
+
+   ```bash
+   apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
+   ```
+
+### iOS
+
+1. Set the bundle identifier and signing team in Xcode (see **Building and
+   shipping on iOS**).
+2. Bump the version in `pubspec.yaml`; Flutter writes it into
+   `CFBundleShortVersionString` / `CFBundleVersion`.
+3. Archive with `flutter build ipa --release`, or **Product → Archive** in Xcode.
+4. Upload to App Store Connect (Transporter or Xcode), then TestFlight / App Store.
+5. App Review note: the camera and microphone usage descriptions are visible in
+   `ios/Runner/Info.plist`; the app uses the system photo picker without read
+   permission and asks for photo-library add access only when saving. Nothing is
+   uploaded.
 
 ## Brand assets
 

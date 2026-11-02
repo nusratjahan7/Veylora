@@ -105,8 +105,11 @@ class GalleryEntry {
         orElse: () => GalleryEntryKind.photo,
       );
 
-  static PhotoExport _exportFromName(Object? name) => PhotoExport.values
-      .firstWhere((export) => export.name == name, orElse: () => PhotoExport.original);
+  static PhotoExport _exportFromName(Object? name) =>
+      PhotoExport.values.firstWhere(
+        (export) => export.name == name,
+        orElse: () => PhotoExport.original,
+      );
 
   @override
   String toString() => 'GalleryEntry(${kind.name}, $label, $path)';

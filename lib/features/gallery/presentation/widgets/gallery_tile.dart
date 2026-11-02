@@ -25,13 +25,13 @@ class GalleryTile extends StatelessWidget {
 
   String get _semanticLabel {
     final what = switch (entry.kind) {
-      GalleryEntryKind.photo => entry.isComposite
-          ? 'Composite photo'
-          : 'Photo',
+      GalleryEntryKind.photo => entry.isComposite ? 'Composite photo' : 'Photo',
       GalleryEntryKind.video => 'Video',
       GalleryEntryKind.reference => 'Reference image',
     };
-    return missing ? '$what, ${entry.label}, file missing' : '$what, ${entry.label}';
+    return missing
+        ? '$what, ${entry.label}, file missing'
+        : '$what, ${entry.label}';
   }
 
   @override

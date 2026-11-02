@@ -176,7 +176,10 @@ class _RecordingChip extends StatelessWidget {
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: danger),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: danger,
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
@@ -328,7 +331,8 @@ class CameraBottomBar extends StatelessWidget {
                               tooltip: session.isFrontFacing
                                   ? 'Switch to rear camera'
                                   : 'Switch to front camera',
-                              onPressed: session.canSwitchCamera &&
+                              onPressed:
+                                  session.canSwitchCamera &&
                                       !capturing &&
                                       !recording
                                   ? onSwitchCamera
@@ -382,6 +386,11 @@ class _ZoomSelectorState extends State<_ZoomSelector> {
       for (final stop in const <double>[1, 2, 5, 10])
         if (stop >= caps.minZoom - 0.01 && stop <= caps.maxZoom + 0.01) stop,
     ];
+    if (stops.isEmpty) {
+      // A range that falls between the fixed stops (e.g. 2.5×–4×) still needs
+      // one stop, so the selector renders instead of indexing an empty list.
+      return <double>[caps.minZoom];
+    }
     return stops.take(4).toList();
   }
 

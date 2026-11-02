@@ -16,10 +16,7 @@ class ShareService {
   Future<void> shareFile(String path, {Rect? origin}) =>
       errorHandler.guard(() async {
         await SharePlus.instance.share(
-          ShareParams(
-            files: <XFile>[XFile(path)],
-            sharePositionOrigin: origin,
-          ),
+          ShareParams(files: <XFile>[XFile(path)], sharePositionOrigin: origin),
         );
       }, operation: 'share file');
 }

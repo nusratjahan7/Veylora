@@ -215,6 +215,26 @@ void main() {
       expect(platform.zoomCalls.last.$2, greaterThan(3));
     });
 
+    testWidgets('a zoom range with no preset stop still renders', (
+      tester,
+    ) async {
+      // Some devices report a range that contains none of the fixed stops
+      // (1×, 2×, 5×, 10×); the selector must not index an empty list.
+      platform
+        ..minZoom = 2.5
+        ..maxZoom = 4;
+      await pumpPage(
+        tester,
+        FakePermissionService(AppPermissionStatus.granted),
+      );
+      await settle(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey<String>('camera-zoom')), findsOneWidget);
+      expect(find.text('2.5×'), findsOneWidget);
+      expect(shutter, findsOneWidget);
+    });
+
     testWidgets('switching to the front camera hides the flash control', (
       tester,
     ) async {

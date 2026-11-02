@@ -144,7 +144,10 @@ void main() {
     // clip does support are still there.
     expect(find.textContaining('could not be played'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('gallery-share')), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('gallery-delete')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('gallery-delete')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('gallery-use-reference')),
       findsNothing,

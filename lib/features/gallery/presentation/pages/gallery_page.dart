@@ -99,12 +99,11 @@ class _EntryGrid extends ConsumerWidget {
       onRefresh: () => ref.read(galleryHistoryProvider.notifier).refresh(),
       child: GridView.builder(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        gridDelegate:
-            const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: AppSpacing.sm,
-              crossAxisSpacing: AppSpacing.sm,
-            ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+        ),
         itemCount: entries.length,
         itemBuilder: (context, index) => GalleryTile(
           entry: entries[index],
@@ -150,7 +149,11 @@ class _EmptyState extends StatelessWidget {
           children: <Widget>[
             Icon(icon, size: 40, color: scheme.onSurfaceVariant),
             const SizedBox(height: AppSpacing.lg),
-            Text(title, textAlign: TextAlign.center, style: context.textStyles.titleMedium),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: context.textStyles.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               body,

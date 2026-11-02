@@ -84,10 +84,18 @@ void main() {
       );
 
       final entries = history().entries;
-      expect(entries.singleWhere((e) => e.export == PhotoExport.original)
-          .isComposite, isFalse);
-      expect(entries.singleWhere((e) => e.export == PhotoExport.composite)
-          .isComposite, isTrue);
+      expect(
+        entries
+            .singleWhere((e) => e.export == PhotoExport.original)
+            .isComposite,
+        isFalse,
+      );
+      expect(
+        entries
+            .singleWhere((e) => e.export == PhotoExport.composite)
+            .isComposite,
+        isTrue,
+      );
     });
 
     test('history survives a restart of the app', () async {
@@ -126,10 +134,10 @@ void main() {
         createdAt: DateTime(2026, 2, 1),
       );
 
-      expect(
-        history().entries.map((entry) => entry.path).toList(),
-        <String>[newer.path, older.path],
-      );
+      expect(history().entries.map((entry) => entry.path).toList(), <String>[
+        newer.path,
+        older.path,
+      ]);
       expect(history().of(GalleryEntryKind.photo).single.path, older.path);
       expect(history().of(GalleryEntryKind.reference).single.path, newer.path);
     });
@@ -137,10 +145,7 @@ void main() {
     test('only paths and light metadata reach storage', () async {
       final file = await aFile('Veylora_4.jpg');
       await container.read(galleryHistoryProvider.future);
-      await controller().record(
-        path: file.path,
-        kind: GalleryEntryKind.photo,
-      );
+      await controller().record(path: file.path, kind: GalleryEntryKind.photo);
 
       final raw = await store.getString(StorageKeys.galleryHistory);
 
@@ -182,28 +187,28 @@ void main() {
   });
 
   group('deleted files', () {
-    test('an entry whose file was removed outside the app is flagged', () async {
-      final file = await aFile('Veylora_6.jpg');
-      await container.read(galleryHistoryProvider.future);
-      await controller().record(
-        path: file.path,
-        kind: GalleryEntryKind.photo,
-      );
+    test(
+      'an entry whose file was removed outside the app is flagged',
+      () async {
+        final file = await aFile('Veylora_6.jpg');
+        await container.read(galleryHistoryProvider.future);
+        await controller().record(
+          path: file.path,
+          kind: GalleryEntryKind.photo,
+        );
 
-      await file.delete();
-      await controller().refresh();
+        await file.delete();
+        await controller().refresh();
 
-      final entry = history().entries.single;
-      expect(history().isMissing(entry), isTrue);
-    });
+        final entry = history().entries.single;
+        expect(history().isMissing(entry), isTrue);
+      },
+    );
 
     test('deleting an entry forgets it and removes the app copy', () async {
       final file = await aFile('Veylora_7.jpg');
       await container.read(galleryHistoryProvider.future);
-      await controller().record(
-        path: file.path,
-        kind: GalleryEntryKind.photo,
-      );
+      await controller().record(path: file.path, kind: GalleryEntryKind.photo);
 
       await controller().remove(history().entries.single);
 
@@ -215,10 +220,7 @@ void main() {
     test('deleting an entry whose file is already gone still works', () async {
       final file = await aFile('Veylora_8.jpg');
       await container.read(galleryHistoryProvider.future);
-      await controller().record(
-        path: file.path,
-        kind: GalleryEntryKind.photo,
-      );
+      await controller().record(path: file.path, kind: GalleryEntryKind.photo);
       await file.delete();
 
       await expectLater(
