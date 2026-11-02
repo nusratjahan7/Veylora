@@ -6,8 +6,8 @@ import '../core/theme/app_theme.dart';
 import '../features/settings/presentation/providers/settings_controller.dart';
 import 'router/app_router.dart';
 
-class CameraOverlayApp extends ConsumerWidget {
-  const CameraOverlayApp({super.key});
+class VeyloraApp extends ConsumerWidget {
+  const VeyloraApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

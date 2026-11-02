@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:camera_overlay/features/overlay/domain/overlay_fit_mode.dart';
-import 'package:camera_overlay/features/overlay/domain/overlay_geometry.dart';
-import 'package:camera_overlay/features/overlay/domain/overlay_settings.dart';
+import 'package:veylora/features/overlay/domain/overlay_fit_mode.dart';
+import 'package:veylora/features/overlay/domain/overlay_geometry.dart';
+import 'package:veylora/features/overlay/domain/overlay_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,15 +1,15 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:camera_overlay/core/errors/app_exception.dart';
-import 'package:camera_overlay/core/files/file_service.dart';
-import 'package:camera_overlay/core/storage/shared_preferences_store.dart';
-import 'package:camera_overlay/features/gallery/data/image_picker_service.dart';
-import 'package:camera_overlay/features/overlay/data/overlay_image_decoder.dart';
-import 'package:camera_overlay/features/overlay/domain/overlay_fit_mode.dart';
-import 'package:camera_overlay/features/overlay/presentation/providers/overlay_image_provider.dart';
-import 'package:camera_overlay/features/overlay/presentation/providers/overlay_settings_provider.dart';
-import 'package:camera_overlay/features/settings/presentation/providers/settings_controller.dart';
+import 'package:veylora/core/errors/app_exception.dart';
+import 'package:veylora/core/files/file_service.dart';
+import 'package:veylora/core/storage/shared_preferences_store.dart';
+import 'package:veylora/features/gallery/data/image_picker_service.dart';
+import 'package:veylora/features/overlay/data/overlay_image_decoder.dart';
+import 'package:veylora/features/overlay/domain/overlay_fit_mode.dart';
+import 'package:veylora/features/overlay/presentation/providers/overlay_image_provider.dart';
+import 'package:veylora/features/overlay/presentation/providers/overlay_settings_provider.dart';
+import 'package:veylora/features/settings/presentation/providers/settings_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

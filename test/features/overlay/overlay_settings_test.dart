@@ -1,4 +1,4 @@
-import 'package:camera_overlay/features/overlay/domain/overlay_settings.dart';
+import 'package:veylora/features/overlay/domain/overlay_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

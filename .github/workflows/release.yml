@@ -1,0 +1,299 @@
+name: Release
+
+# Builds signed Android (APK + AAB) and — when Apple signing secrets are present
+# — a signed iOS IPA, then publishes everything on a GitHub Release.
+#
+# Trigger: push a version tag, e.g.
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# Secrets and setup are documented in RELEASE.md.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Required by softprops/action-gh-release to create the release and upload
+# assets.
+permissions:
+  contents: write
+
+# Never run two releases for the same tag at once.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.44.6'
+  # Keep in sync with the Android applicationId and the iOS bundle identifier.
+  BUNDLE_ID: com.veylora.app
+  # Artifact name prefix. Change once here to rename every downloadable file.
+  APP_NAME: Veylora
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # GitHub does not allow the `secrets` context in a job-level `if:`, so this
+  # tiny job maps "is the Apple certificate configured?" to an output the iOS
+  # job can test.
+  # ---------------------------------------------------------------------------
+  detect-signing:
+    name: Detect Apple signing
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.check.outputs.ios }}
+    steps:
+      - id: check
+        env:
+          CERT_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
+        run: |
+          if [ -n "$CERT_P12" ]; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::IOS_CERTIFICATE_P12 is not set — skipping the signed IPA and releasing Android assets only."
+          fi
+
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android release
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set; a signed release cannot be produced."
+            exit 1
+          fi
+          # android/app/build.gradle.kts resolves storeFile relative to the app
+          # module, and reads android/key.properties only when it exists.
+          printf '%s' "$KEYSTORE_BASE64" | openssl base64 -d -A > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Install Android SDK components
+        run: |
+          # Best effort: the Android Gradle Plugin also auto-installs anything
+          # missing, as long as the licences are accepted.
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-37.0" "build-tools;36.0.0" \
+                     "ndk;28.2.13676358" "cmake;3.22.1" || true
+
+      - name: Build APK and AAB
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          V="${VERSION#v}"
+          flutter build apk --release \
+            --build-name="$V" --build-number="${{ github.run_number }}"
+          flutter build appbundle --release \
+            --build-name="$V" --build-number="${{ github.run_number }}"
+
+      - name: Verify the release signature
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(command -v apksigner || true)"
+          if [ -z "$APKSIGNER" ]; then
+            APKSIGNER="$(ls -d "$SDK"/build-tools/*/apksigner 2>/dev/null | tail -n1)"
+          fi
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner not found; skipped the signature check."
+            exit 0
+          fi
+          CERT=$("$APKSIGNER" verify --print-certs \
+            build/app/outputs/flutter-apk/app-release.apk | grep "certificate DN")
+          echo "$CERT"
+          case "$CERT" in
+            *"CN=Android Debug"*)
+              echo "::error::The APK is signed with the debug key. Check the ANDROID_KEYSTORE_* secrets."
+              exit 1
+              ;;
+          esac
+
+      - name: Stage Android assets
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          V="${VERSION#v}"
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "dist/${APP_NAME}-${V}-Android.apk"
+          cp build/app/outputs/bundle/release/app-release.aab \
+             "dist/${APP_NAME}-${V}-Android.aab"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-assets
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Runs only when the Apple signing secrets are configured. It never produces
+  # unsigned output, so nothing uninstallable is ever published as an IPA.
+  # ---------------------------------------------------------------------------
+  ios:
+    name: iOS release (signed)
+    needs: [validate, detect-signing]
+    if: needs.detect-signing.outputs.ios == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Import the distribution certificate
+        env:
+          CERT_P12: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          CERT_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}
+        run: |
+          KEYCHAIN=build.keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$CERT_P12" | openssl base64 -d -A > /tmp/certificate.p12
+          security import /tmp/certificate.p12 -k "$KEYCHAIN" \
+            -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          rm -f /tmp/certificate.p12
+
+      - name: Install the provisioning profile
+        env:
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          printf '%s' "$PROFILE" | openssl base64 -d -A \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/veylora.mobileprovision
+
+      - name: Set the development team
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # ios/Flutter/Release.xcconfig is the Runner target's base
+          # configuration, so a setting added here reaches the release build.
+          echo "DEVELOPMENT_TEAM=$TEAM_ID" >> ios/Flutter/Release.xcconfig
+
+      - name: Generate export options
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+        run: |
+          cat > /tmp/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>stripSwiftSymbols</key><true/>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${BUNDLE_ID}</key><string>$PROFILE_NAME</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build signed IPA
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          V="${VERSION#v}"
+          flutter build ipa --release \
+            --build-name="$V" --build-number="${{ github.run_number }}" \
+            --export-options-plist=/tmp/ExportOptions.plist
+
+      - name: Stage iOS asset
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          V="${VERSION#v}"
+          mkdir -p dist
+          IPA=$(ls build/ios/ipa/*.ipa | head -n1)
+          cp "$IPA" "dist/${APP_NAME}-${V}-iOS.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-assets
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Publishes the release once Android has produced its assets. The iOS job is
+  # optional, so this runs even when it was skipped (but not when it failed).
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [detect-signing, validate, android, ios]
+    if: ${{ always() && needs.android.result == 'success' && (needs.ios.result == 'success' || needs.ios.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: '*-assets'
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lh dist
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "${{ env.APP_NAME }} ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: dist/*
+          fail_on_unmatched_files: true

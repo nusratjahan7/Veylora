@@ -1,5 +1,5 @@
-import 'package:camera_overlay/features/camera/data/capture_cropper.dart';
-import 'package:camera_overlay/features/camera/domain/capture_crop.dart';
+import 'package:veylora/features/camera/data/capture_cropper.dart';
+import 'package:veylora/features/camera/domain/capture_crop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';

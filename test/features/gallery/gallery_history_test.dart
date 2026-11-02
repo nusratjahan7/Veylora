@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:camera_overlay/core/constants/storage_keys.dart';
-import 'package:camera_overlay/core/files/file_service.dart';
-import 'package:camera_overlay/core/storage/shared_preferences_store.dart';
-import 'package:camera_overlay/features/gallery/domain/gallery_entry.dart';
-import 'package:camera_overlay/features/gallery/presentation/providers/gallery_history_provider.dart';
+import 'package:veylora/core/constants/storage_keys.dart';
+import 'package:veylora/core/files/file_service.dart';
+import 'package:veylora/core/storage/shared_preferences_store.dart';
+import 'package:veylora/features/gallery/domain/gallery_entry.dart';
+import 'package:veylora/features/gallery/presentation/providers/gallery_history_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;

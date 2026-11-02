@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:camera_overlay/core/files/file_service.dart';
+import 'package:veylora/core/files/file_service.dart';
 
 /// A [FileService] that touches no disk.
 ///

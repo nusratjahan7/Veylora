@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:camera_platform_interface/camera_platform_interface.dart';
-import 'package:camera_overlay/core/files/file_service.dart';
+import 'package:veylora/core/files/file_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image/image.dart' as img;
 

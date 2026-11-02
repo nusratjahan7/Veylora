@@ -1,5 +1,5 @@
-import 'package:camera_overlay/features/camera/domain/frame_geometry.dart';
-import 'package:camera_overlay/features/settings/domain/capture_ratio.dart';
+import 'package:veylora/features/camera/domain/frame_geometry.dart';
+import 'package:veylora/features/settings/domain/capture_ratio.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 

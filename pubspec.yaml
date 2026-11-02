@@ -1,4 +1,4 @@
-name: camera_overlay
+name: veylora
 description: "Veylora - Create what you envision. Overlay a reference image on the live camera preview."
 publish_to: 'none'
 version: 0.1.0+1

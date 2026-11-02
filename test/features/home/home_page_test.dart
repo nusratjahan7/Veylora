@@ -1,7 +1,7 @@
-import 'package:camera_overlay/core/constants/app_constants.dart';
-import 'package:camera_overlay/core/theme/app_theme.dart';
-import 'package:camera_overlay/features/home/presentation/pages/home_page.dart';
-import 'package:camera_overlay/shared/widgets/brand_mark.dart';
+import 'package:veylora/core/constants/app_constants.dart';
+import 'package:veylora/core/theme/app_theme.dart';
+import 'package:veylora/features/home/presentation/pages/home_page.dart';
+import 'package:veylora/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

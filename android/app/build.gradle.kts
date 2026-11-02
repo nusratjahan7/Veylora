@@ -19,7 +19,7 @@ if (hasReleaseSigning) {
 }
 
 android {
-    namespace = "com.camora.camera_overlay"
+    namespace = "com.veylora.app"
     compileSdk = 37
     // API 37 ships as the minor-versioned platform "android-37.0"; without the
     // explicit minor, AGP looks for "android-37" and the build fails to find it.
@@ -33,7 +33,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.camora.camera_overlay"
+        applicationId = "com.veylora.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

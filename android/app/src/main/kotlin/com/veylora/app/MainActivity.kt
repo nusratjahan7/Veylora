@@ -1,4 +1,4 @@
-package com.camora.camera_overlay
+package com.veylora.app
 
 import io.flutter.embedding.android.FlutterActivity
 

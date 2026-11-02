@@ -123,6 +123,17 @@ flutter doctor -v
 
 ---
 
+## Releases
+
+Tagged builds (`v1.0.0`, `v1.0.1`, …) are built and published to GitHub Releases
+by `.github/workflows/release.yml`. Download the Android APK (installable) and AAB
+(for Google Play) from the repository's **Releases** page; a signed iOS IPA is
+attached only when Apple signing secrets are configured. See
+[RELEASE.md](RELEASE.md) for the release workflow, the required GitHub Secrets,
+TestFlight distribution and troubleshooting.
+
+---
+
 ## Running on Android
 
 1. **Install the required SDK components.** `permission_handler_android` 14 compiles
@@ -183,9 +194,10 @@ iOS builds require macOS with a current Xcode and its command-line tools. Flutte
    (`sudo xcodebuild -license accept`).
 2. `flutter doctor -v` must report the iOS toolchain; `flutter precache --ios`
    downloads the engine artifacts.
-3. Set a unique bundle identifier. It is `com.camora.cameraOverlay` today (see
-   `PRODUCT_BUNDLE_IDENTIFIER` in `ios/Runner.xcodeproj`); change it — and the
-   Android `applicationId`/`namespace` — before shipping.
+3. Confirm the bundle identifier is unique to your account. It is
+   `com.veylora.app` today (see `PRODUCT_BUNDLE_IDENTIFIER` in
+   `ios/Runner.xcodeproj`), matching the Android `applicationId`/`namespace`;
+   change both if that identifier is already taken.
 4. Open the **workspace**, not the project, so Swift packages resolve:
 
    ```bash

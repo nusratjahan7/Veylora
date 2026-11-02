@@ -1,4 +1,4 @@
-import 'package:camera_overlay/core/storage/key_value_store.dart';
+import 'package:veylora/core/storage/key_value_store.dart';
 
 /// In-memory [KeyValueStore], so storage tests never touch the platform.
 class FakeKeyValueStore implements KeyValueStore {

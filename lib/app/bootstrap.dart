@@ -33,7 +33,7 @@ void bootstrap() {
         return true;
       };
 
-      runApp(const ProviderScope(child: CameraOverlayApp()));
+      runApp(const ProviderScope(child: VeyloraApp()));
     },
     (error, stackTrace) =>
         const AppLogger().error('Uncaught zone error', error, stackTrace),

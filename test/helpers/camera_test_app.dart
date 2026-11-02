@@ -1,6 +1,6 @@
-import 'package:camera_overlay/app/router/app_routes.dart';
-import 'package:camera_overlay/core/theme/app_theme.dart';
-import 'package:camera_overlay/features/camera/presentation/pages/camera_page.dart';
+import 'package:veylora/app/router/app_routes.dart';
+import 'package:veylora/core/theme/app_theme.dart';
+import 'package:veylora/features/camera/presentation/pages/camera_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;

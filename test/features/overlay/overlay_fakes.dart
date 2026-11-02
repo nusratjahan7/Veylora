@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:camera_overlay/core/errors/app_error_handler.dart';
-import 'package:camera_overlay/core/logging/app_logger.dart';
-import 'package:camera_overlay/features/gallery/data/image_picker_service.dart';
-import 'package:camera_overlay/features/settings/domain/app_settings.dart';
-import 'package:camera_overlay/features/settings/presentation/providers/settings_controller.dart';
+import 'package:veylora/core/errors/app_error_handler.dart';
+import 'package:veylora/core/logging/app_logger.dart';
+import 'package:veylora/features/gallery/data/image_picker_service.dart';
+import 'package:veylora/features/settings/domain/app_settings.dart';
+import 'package:veylora/features/settings/presentation/providers/settings_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;

@@ -1,9 +1,9 @@
 import 'package:camera/camera.dart';
-import 'package:camera_overlay/core/errors/app_exception.dart';
-import 'package:camera_overlay/features/camera/domain/camera_capabilities.dart';
-import 'package:camera_overlay/features/camera/domain/camera_errors.dart';
-import 'package:camera_overlay/features/camera/domain/camera_flash_mode.dart';
-import 'package:camera_overlay/features/camera/domain/camera_selection.dart';
+import 'package:veylora/core/errors/app_exception.dart';
+import 'package:veylora/features/camera/domain/camera_capabilities.dart';
+import 'package:veylora/features/camera/domain/camera_errors.dart';
+import 'package:veylora/features/camera/domain/camera_flash_mode.dart';
+import 'package:veylora/features/camera/domain/camera_selection.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _front = CameraDescription(

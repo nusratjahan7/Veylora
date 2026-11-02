@@ -1,9 +1,9 @@
 import 'dart:ui';
 
-import 'package:camera_overlay/features/overlay/domain/overlay_fit_mode.dart';
-import 'package:camera_overlay/features/overlay/presentation/providers/overlay_settings_provider.dart';
-import 'package:camera_overlay/features/settings/domain/app_settings.dart';
-import 'package:camera_overlay/features/settings/presentation/providers/settings_controller.dart';
+import 'package:veylora/features/overlay/domain/overlay_fit_mode.dart';
+import 'package:veylora/features/overlay/presentation/providers/overlay_settings_provider.dart';
+import 'package:veylora/features/settings/domain/app_settings.dart';
+import 'package:veylora/features/settings/presentation/providers/settings_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

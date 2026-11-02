@@ -1,5 +1,5 @@
-import 'package:camera_overlay/core/theme/app_theme.dart';
-import 'package:camera_overlay/core/theme/camera_theme.dart';
+import 'package:veylora/core/theme/app_theme.dart';
+import 'package:veylora/core/theme/camera_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

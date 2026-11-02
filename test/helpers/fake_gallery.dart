@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:camera_overlay/core/errors/app_error_handler.dart';
-import 'package:camera_overlay/core/logging/app_logger.dart';
-import 'package:camera_overlay/features/gallery/data/gallery_saver_service.dart';
+import 'package:veylora/core/errors/app_error_handler.dart';
+import 'package:veylora/core/logging/app_logger.dart';
+import 'package:veylora/features/gallery/data/gallery_saver_service.dart';
 
 /// Records what would have gone to the photo library.
 class FakeGallerySaver extends GallerySaverService {

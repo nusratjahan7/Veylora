@@ -1,4 +1,4 @@
-import 'package:camera_overlay/features/overlay/presentation/providers/overlay_tray_provider.dart';
+import 'package:veylora/features/overlay/presentation/providers/overlay_tray_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
